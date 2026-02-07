@@ -11,7 +11,7 @@ func cleanInput(text string) []string {
 	return strings.Fields(strings.ToLower(text))
 }
 
-func startRepl() {
+func startRepl(context *commandContext) {
 	scanner := bufio.NewScanner(os.Stdin)
 	cmds := getCommands()
 
@@ -25,7 +25,7 @@ func startRepl() {
 		if len(tokens) != 0 {
 			cmd, ok := cmds[tokens[0]]
 			if ok {
-				err := cmd.callback()
+				err := cmd.callback(context)
 				if err != nil {
 					fmt.Println(err)
 				}

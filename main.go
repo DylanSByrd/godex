@@ -1,5 +1,14 @@
 package main
 
+import (
+	"time"
+
+	"github.com/dylansbyrd/godex/internal/pokeapi"
+)
+
 func main() {
-	startRepl()
+	context := &commandContext {
+		client: pokeapi.NewClient(5 * time.Second),
+	}
+	startRepl(context)
 }
