@@ -22,16 +22,18 @@ func startRepl(context *commandContext) {
 		input := scanner.Text()
 		tokens := cleanInput(input)
 
-		if len(tokens) != 0 {
-			cmd, ok := cmds[tokens[0]]
-			if ok {
-				err := cmd.callback(context)
-				if err != nil {
-					fmt.Println(err)
-				}
-			} else {
-				fmt.Println("Uknown command")
+		if len(tokens) == 0 {
+			continue
+		}
+
+		cmd, ok := cmds[tokens[0]]
+		if ok {
+			err := cmd.callback(context)
+			if err != nil {
+				fmt.Println(err)
 			}
+		} else {
+			fmt.Println("Uknown command")
 		}
 	}
 }

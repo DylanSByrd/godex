@@ -8,7 +8,7 @@ import (
 
 func main() {
 	context := &commandContext {
-		client: pokeapi.NewClient(5 * time.Second),
+		client: pokeapi.NewClient(5 * time.Second, 5 * time.Second),
 	}
 	startRepl(context)
 }
