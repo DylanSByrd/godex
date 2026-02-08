@@ -197,7 +197,7 @@ func commandTryCatchPokemon(context* commandContext, args ...string) error {
 	roll := rand.IntN(rollMax - rollMin) + rollMin
 
 	if context.debugCatchRolls {
-		fmt.Printf("Rolling between %v - %v...", rollMin, rollMax)
+		fmt.Printf("Rolling between %v - %v...\n", rollMin, rollMax)
 		fmt.Printf("Rolled %v against %v\n", roll, pokemon.BaseExperience)
 	}
 
@@ -210,7 +210,7 @@ func commandTryCatchPokemon(context* commandContext, args ...string) error {
 		numRequiredForPokeballUpgrade := context.pokeballType.getNumPokemonRequiredForUpgrade()
 		if numRequiredForPokeballUpgrade > 0 {
 			numPokemonEntries := len(context.pokedex)
-			if numPokemonEntries > numRequiredForPokeballUpgrade {
+			if numPokemonEntries >= numRequiredForPokeballUpgrade {
 				fmt.Printf("You've upgraded your %ss to %ss!\n", context.pokeballType, context.pokeballType + 1)
 				context.pokeballType = context.pokeballType + 1
 			}

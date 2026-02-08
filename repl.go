@@ -34,7 +34,7 @@ func startRepl(context *commandContext) {
 				fmt.Println(err)
 			}
 		} else {
-			fmt.Println("Uknown command")
+			fmt.Println("Uknown command. Type 'help' for a list of commands.")
 		}
 	}
 }
