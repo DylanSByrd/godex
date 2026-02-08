@@ -8,11 +8,6 @@ import (
 	"github.com/dylansbyrd/godex/internal/pokeapi"
 )
 
-const  (
-	rollMin = 40
-	rollMax = 350
-)
-
 type cliCommand struct {
 	name string
 	description string
@@ -24,6 +19,10 @@ type commandContext struct {
 	nextLocationArea *string
 	prevLocationArea *string
 	pokedex map[string]pokeapi.PokemonDetails
+	pokeballType PokeballType
+
+	// debug
+	debugCatchRolls bool
 }
 
 func getCommands() map[string]cliCommand {
@@ -50,28 +49,43 @@ func getCommands() map[string]cliCommand {
 		},
 		"explore": {
 			name: "explore <location_name>",
-			description: "Explore a location",
+			description: "Explores a location",
 			callback: commandExplore,
 		},
 		"catch": {
 			name: "catch <pokemon_name>",
-			description: "Attempts to catch a pokemon",
-			callback: commandCatch,
+			description: "Attempts to catch a Pokemon",
+			callback: commandTryCatchPokemon,
 		},
 		"inspect": {
 			name: "inspect <pokemon_name>",
-			description: "Shows details about a pokemon if caught",
+			description: "Shows details about a Pokemon if caught",
 			callback: commandInspect,
 		},
 		"pokedex": {
 			name: "pokedex",
-			description: "Prints the list of available pokedex entries",
-			callback: CommandPrintPokedex,
+			description: "Prints the list of inspectable Pokedex entries",
+			callback: commandPrintPokedex,
+		},
+		"pokeball": {
+			name: "pokeball",
+			description: "Shows details about your current Pokeballs",
+			callback: commandPrintPokeballDetails,
 		},
 		"dev_map": {
 			name: "dev_map",
-			description: "Dev command: prints the next and previous map locations",
+			description: "Dev command: prints the next and previous map endpoints",
 			callback: devCommandPrintLocationContext,
+		},
+		"dev_rolls": {
+			name: "dev_rolls",
+			description: "Dev command: toggles display of dice roll when attempting to catch Pokemon",
+			callback: devCommandShowCatchRolls,
+		},
+		"dev_pokeball": {
+			name: "dev_pokeball <pokeball_type>",
+			description: "Dev command: sets your current Pokeball type to <pokeball_type>",
+			callback: devCommandForcePokeballType,
 		},
 	}
 }
@@ -96,6 +110,11 @@ func commandHelp(*commandContext, ...string) error {
 }
 
 func commandMapf(context *commandContext, _ ...string) error {
+	if context.nextLocationArea == nil && context.prevLocationArea != nil {
+		fmt.Println("You're on the last page")
+		return nil
+	}
+
 	resourceList, err := context.client.RequestLocationArea(context.nextLocationArea)
 	if err != nil {
 		return err
@@ -156,9 +175,9 @@ func commandExplore(context *commandContext, args ...string) error {
 	return nil
 }
 
-func commandCatch(context* commandContext, args ...string) error {
+func commandTryCatchPokemon(context* commandContext, args ...string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("Nnot enough arguments to 'catch' command. Please provide a pokemon name.")
+		return fmt.Errorf("Nnot enough arguments to 'catch' command. Please provide a Pokemon name.")
 	}
 
 	pokemon, err := context.client.RequestPokemonDetails(args[0])
@@ -166,15 +185,30 @@ func commandCatch(context* commandContext, args ...string) error {
 		return err
 	}
 
-	fmt.Printf("Throwing a Pokeball at %s...\n", pokemon.Name)
+	fmt.Printf("Throwing a %s at %s...\n", context.pokeballType, pokemon.Name)
 	
+	rollMin, rollMax := context.pokeballType.getRollRange()
 	roll := rand.IntN(rollMax - rollMin) + rollMin
-	fmt.Printf("Rolled %v against %v\n", roll, pokemon.BaseExperience)
+
+	if context.debugCatchRolls {
+		fmt.Printf("Rolling between %v - %v...", rollMin, rollMax)
+		fmt.Printf("Rolled %v against %v\n", roll, pokemon.BaseExperience)
+	}
 
 	if roll > pokemon.BaseExperience {
-		fmt.Printf("%s was caught!\n", pokemon.Name)
 		context.pokedex[pokemon.Name] = pokemon
+		fmt.Printf("%s was caught!\n", pokemon.Name)
 		fmt.Println("You may now inspect it with the inspect command.")
+
+		// Attempt to upgrade pokeball type
+		numRequiredForPokeballUpgrade := context.pokeballType.getNumPokemonRequiredForUpgrade()
+		if numRequiredForPokeballUpgrade > 0 {
+			numPokemonEntries := len(context.pokedex)
+			if numPokemonEntries > numRequiredForPokeballUpgrade {
+				fmt.Printf("You've upgraded your %ss to %ss!\n", context.pokeballType, context.pokeballType + 1)
+				context.pokeballType = context.pokeballType + 1
+			}
+		}
 	} else {
 		fmt.Printf("%s escaped!\n", pokemon.Name)
 	}
@@ -184,7 +218,7 @@ func commandCatch(context* commandContext, args ...string) error {
 
 func commandInspect(context* commandContext, args ...string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("Not enough arguments to 'inspect' command. Please provide a pokemon name.")
+		return fmt.Errorf("Not enough arguments to 'inspect' command. Please provide a Pokemon name.")
 	}
 
 	if pokemon, exists := context.pokedex[args[0]]; exists {
@@ -202,7 +236,7 @@ func commandInspect(context* commandContext, args ...string) error {
 			fmt.Printf(" -%s\n", pokemonType.Type.Name)
 		}
 	} else {
-		fmt.Println("You have not caught that pokemon")
+		fmt.Println("You have not caught that Pokemon")
 	}
 
 	return nil
@@ -229,11 +263,56 @@ func devCommandPrintLocationContext(context *commandContext, _ ...string) error 
 	return nil
 }
 
-func CommandPrintPokedex(context *commandContext, _ ...string) error {
-	fmt.Println("Your pokedex:")
+func commandPrintPokedex(context *commandContext, _ ...string) error {
+	fmt.Println("Your Pokedex:")
 	for name, _ := range context.pokedex {
 		fmt.Printf(" - %s\n", name)
 	}
 	return nil
 }
 
+func commandPrintPokeballDetails(context *commandContext, _ ...string) error {
+	fmt.Printf("%s stats:\n", context.pokeballType)
+
+	rollMin, rollMax := context.pokeballType.getRollRange()
+	fmt.Printf(" - min catch power: %d\n", rollMin)
+	fmt.Printf(" - max catch power: %d\n", rollMax)
+	
+	numNeededForUpgrade := context.pokeballType.getNumPokemonRequiredForUpgrade()
+	if numNeededForUpgrade > 0 {
+		numUniqueCaught := len(context.pokedex)
+		fmt.Printf(" - upgrades at %v unique pokemon caught (need %v more)\n", 
+			numNeededForUpgrade, numNeededForUpgrade - numUniqueCaught)
+	} else {
+		fmt.Printf("- fully upgraded")
+	}
+
+	return nil
+}
+
+func devCommandShowCatchRolls(context *commandContext, _ ...string) error {
+	context.debugCatchRolls = !context.debugCatchRolls
+	if context.debugCatchRolls {
+		fmt.Println("Now displaying catch rolls")
+	} else {
+		fmt.Println("No longer displaying catch rolls")
+	}
+
+	return nil
+}
+
+func devCommandForcePokeballType(context *commandContext, args ...string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("Not enough arguments to 'dev_pokeball' command. Please provide a Pokeball type.")
+	}
+
+	pokeballType, ok := parseString(args[0])
+	if !ok {
+		return fmt.Errorf("Invalid Pokeball type\n")
+	}
+
+	context.pokeballType = pokeballType
+	fmt.Printf("You are now using %ss.\n", context.pokeballType)
+
+	return nil
+}
