@@ -1,5 +1,5 @@
 # Godex
-Simple toy Pokedex REPL app made in Go. Part of boot.dev coursework.
+Simple toy Pokedex REPL app made in Go with the PokeAPI with local response caching. Part of boot.dev coursework.
 
 ## Requirements
 Go version 1.22+
