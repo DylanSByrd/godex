@@ -9,7 +9,7 @@ import (
 )
 
 const  (
-	rollMin = 10
+	rollMin = 40
 	rollMax = 350
 )
 
@@ -58,15 +58,20 @@ func getCommands() map[string]cliCommand {
 			description: "Attempts to catch a pokemon",
 			callback: commandCatch,
 		},
+		"inspect": {
+			name: "inspect <pokemon_name>",
+			description: "Shows details about a pokemon if caught",
+			callback: commandInspect,
+		},
+		"pokedex": {
+			name: "pokedex",
+			description: "Prints the list of available pokedex entries",
+			callback: CommandPrintPokedex,
+		},
 		"dev_map": {
 			name: "dev_map",
 			description: "Dev command: prints the next and previous map locations",
 			callback: devCommandPrintLocationContext,
-		},
-		"dev_pokedex": {
-			name: "dev_pokedex",
-			description: "Dev command: prints the list of available pokedex entries",
-			callback: devCommandPrintPokedex,
 		},
 	}
 }
@@ -169,8 +174,35 @@ func commandCatch(context* commandContext, args ...string) error {
 	if roll > pokemon.BaseExperience {
 		fmt.Printf("%s was caught!\n", pokemon.Name)
 		context.pokedex[pokemon.Name] = pokemon
+		fmt.Println("You may now inspect it with the inspect command.")
 	} else {
 		fmt.Printf("%s escaped!\n", pokemon.Name)
+	}
+
+	return nil
+}
+
+func commandInspect(context* commandContext, args ...string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("Not enough arguments to 'inspect' command. Please provide a pokemon name.")
+	}
+
+	if pokemon, exists := context.pokedex[args[0]]; exists {
+		fmt.Printf("Name: %s\n", pokemon.Name)
+		fmt.Printf("Height: %v\n", pokemon.Height)
+		fmt.Printf("Weight: %v\n", pokemon.Weight)
+
+		fmt.Println("Stats:")
+		for _, pokemonStat := range pokemon.Stats {
+			fmt.Printf(" -%s: %v\n", pokemonStat.Stat.Name, pokemonStat.BaseStat)
+		}
+
+		fmt.Println("Types:")
+		for _, pokemonType := range pokemon.Types {
+			fmt.Printf(" -%s\n", pokemonType.Type.Name)
+		}
+	} else {
+		fmt.Println("You have not caught that pokemon")
 	}
 
 	return nil
@@ -197,8 +229,8 @@ func devCommandPrintLocationContext(context *commandContext, _ ...string) error 
 	return nil
 }
 
-func devCommandPrintPokedex(context *commandContext, _ ...string) error {
-	fmt.Println("Current pokedex:")
+func CommandPrintPokedex(context *commandContext, _ ...string) error {
+	fmt.Println("Your pokedex:")
 	for name, _ := range context.pokedex {
 		fmt.Printf(" - %s\n", name)
 	}

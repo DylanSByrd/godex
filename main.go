@@ -9,7 +9,7 @@ import (
 func main() {
 	context := &commandContext {
 		client: pokeapi.NewClient(5 * time.Second, 5 * time.Second),
-		pokedex: make(map[string]pokeapi.PokemonDetails),
+		pokedex: map[string]pokeapi.PokemonDetails{},
 	}
 	startRepl(context)
 }
