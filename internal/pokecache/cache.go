@@ -15,13 +15,13 @@ type Cache struct {
 	mutex *sync.Mutex
 }
 
-func NewCache(interval time.Duration) Cache {
+func NewCache(entryLifespan time.Duration) Cache {
 	cache := Cache {
 		entries: make(map[string]cacheEntry),
 		mutex: &sync.Mutex{},
 	}
 
-	go cache.reapLoop(interval)
+	go cache.reapLoop(entryLifespan)
 
 	return cache
 }
@@ -44,21 +44,21 @@ func (cache *Cache) Get(key string) ([]byte, bool) {
 	return entry.value, exists
 }
 
-func (cache *Cache) reapLoop(interval time.Duration) {
-	ticker := time.NewTicker(interval)
+func (cache *Cache) reapLoop(entryLifespan time.Duration) {
+	ticker := time.NewTicker(entryLifespan)
 	defer ticker.Stop()
 
 	for range ticker.C {
-		cache.reap(time.Now().UTC(), interval)
+		cache.reap(time.Now().UTC(), entryLifespan)
 	}
 }
 
-func (cache *Cache) reap(now time.Time, interval time.Duration) {
+func (cache *Cache) reap(now time.Time, entryLifespan time.Duration) {
 		cache.mutex.Lock()
 		defer cache.mutex.Unlock()
 
 		for key, entry := range cache.entries {
-			if entry.createdAt.Before(now.Add(-interval)) {
+			if entry.createdAt.Before(now.Add(-entryLifespan)) {
 				delete(cache.entries, key)
 			}
 		}
