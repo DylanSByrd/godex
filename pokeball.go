@@ -13,8 +13,8 @@ const  (
 	masterballRollMax = 10000
 
 	greatballRequirement = 10
-	ultraballRequirement = 30
-	masterballRequirement = 50
+	ultraballRequirement = 20
+	masterballRequirement = 30
 )
 
 type PokeballType int

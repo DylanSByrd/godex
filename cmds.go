@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"math/rand/v2"
+	"os"
+	"strconv"
 
 	"github.com/dylansbyrd/godex/internal/pokeapi"
 )
@@ -86,6 +87,11 @@ func getCommands() map[string]cliCommand {
 			name: "dev_pokeball <pokeball_type>",
 			description: "Dev command: sets your current Pokeball type to <pokeball_type>",
 			callback: devCommandForcePokeballType,
+		},
+		"dev_simulate": {
+			name: "dev_simulate <pokemon> <(optional)num_attempts=1>",
+			description: "Dev command: simulates <num_attempts> catch attempts against <pokemon>",
+			callback: devCommandSimulateMultipleCatchAttempts,
 		},
 	}
 }
@@ -314,5 +320,38 @@ func devCommandForcePokeballType(context *commandContext, args ...string) error 
 	context.pokeballType = pokeballType
 	fmt.Printf("You are now using %ss.\n", context.pokeballType)
 
+	return nil
+}
+
+func devCommandSimulateMultipleCatchAttempts(context *commandContext, args ...string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("Not enough arguments to 'dev_simulate' command. Please provide a Pokemon name. Optionally provide a number of attempts.")
+	}
+
+	pokemon, err := context.client.RequestPokemonDetails(args[0])
+	if err != nil {
+		return err
+	}
+
+	numAttempts := 1
+	if len(args) > 1 {
+		numAttempts, err = strconv.Atoi(args[1])
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Printf("Simulating %v catch attempt(s) against %s...\n", numAttempts, pokemon.Name)
+
+	numCatches := 0
+	for range numAttempts {
+		rollMin, rollMax := context.pokeballType.getRollRange()
+		roll := rand.IntN(rollMax - rollMin) + rollMin
+		if roll > pokemon.BaseExperience {
+			numCatches++
+		}
+	}
+
+	catchPercent := 100.0 * float64(numCatches) / float64(numAttempts)
+	fmt.Printf("Result: %v catches out of %v attempts (%v%%)\n", numCatches, numAttempts, catchPercent)
 	return nil
 }

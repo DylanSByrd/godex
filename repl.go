@@ -28,7 +28,6 @@ func startRepl(context *commandContext) {
 
 		cmd, ok := cmds[tokens[0]]
 		args := tokens[1:]
-
 		if ok {
 			err := cmd.callback(context, args...)
 			if err != nil {
